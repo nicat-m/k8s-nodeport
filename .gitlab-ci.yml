@@ -1,0 +1,49 @@
+variables:
+  DIND_IMAGE: "rancher/dind:v1.9.0"
+  DOCKER_HOST: "tcp://10.120.24.34:2375"
+  IMAGE_NAME: getnodeports
+  NEXUS_HOST: nijatmansimov
+  #version: 1.0.${CI_COMMIT_SHORT_SHA}
+  WORKDIR: develop-cluster
+  KUBECTL_HELM_IMAGE: "dtzar/helm-kubectl"
+  NAMESPACE: getnodeport
+
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  image: ${DIND_IMAGE}
+  before_script:
+    - export version=1.0.${CI_COMMIT_SHORT_SHA}
+    - cat $avis2itmimdev > $WORKDIR/kube-config
+  script:
+    - cd $WORKDIR
+    - ls -l
+    - echo $version
+    - docker login -u ${REPOSITORY_USER} -p ${REPOSITORY_PASS} ${NEXUS_HOST}
+    - docker build -t $IMAGE_NAME .
+    - docker tag $IMAGE_NAME $NEXUS_HOST/$IMAGE_NAME:$version
+    - docker push $NEXUS_HOST/$IMAGE_NAME:$version
+  tags:
+    - runner-nodeports
+  rules:
+    - changes:
+        - develop-cluster/**
+
+deploy:
+  stage: deploy
+  image: $KUBECTL_HELM_IMAGE
+  script:
+    - export version=1.0.${CI_COMMIT_SHORT_SHA}
+    - sed -i  "s/<TAG>/$version/g"  $WORKDIR/deployments.yaml
+    - kubectl delete -n $NAMESPACE cm kube-config --kubeconfig=$runner_server
+    - kubectl create configmap kube-config --from-file=$kubeavis --from-file=$avis2itmimdev --from-file=$KUBECONFIG_PREPROD --from-file=$KUBECONFIG_PROD -n $NAMESPACE --kubeconfig=$runner_server || true
+    - kubectl apply -f $WORKDIR/deployments.yaml -n $NAMESPACE --kubeconfig=$runner_server
+    - kubectl --kubeconfig=$runner_server wait -n $NAMESPACE --for=condition=ready pod -l app=getnodeport-app --timeout=90s
+  tags:
+    - runner-nodeports
+  rules:
+    - changes:
+        - develop-cluster/**

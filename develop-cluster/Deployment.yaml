@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: getnodeport-app
+  name: getnodeport-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: getnodeport-app
+  template:
+    metadata:
+      labels:
+        app: getnodeport-app
+    spec:
+      containers:
+        - image: nijatmansimov/getnodeports:<TAG>
+          name: getnodeport
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: getnodeport-app-svc
+  name: getnodeport-app-svc
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app: getnodeport-app
+  type: ClusterIP
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: debugport-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - hosts:
+        - debugports-avis2dev.local
+      port:
+        name: http
+        number: 80
+        protocol: HTTP
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: debugport
+spec:
+  gateways:
+    - debugport-gateway
+  hosts:
+    - debugports-avis2dev.local
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: getnodeport-app-svc
+            port:
+              number: 80
