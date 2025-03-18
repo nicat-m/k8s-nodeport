@@ -18,8 +18,8 @@ If you want to export kubernetes svc with nodeport in java application debug por
 
 ## env list
 
-![alt text](https://github.com/nicat_m/k8s-nodeport/blob/main/images/1.png?raw=true)
+![Alt text](images/1.png)
 
 ## nodeport list for each env
 
-![alt text](https://github.com/nicat_m/k8s-nodeport/blob/main/images/2.png?raw=true)
+![Alt text](images/2.png)
